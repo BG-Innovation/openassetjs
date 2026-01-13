@@ -138,4 +138,23 @@ export class EmployeesResource extends BaseResource<Employee, EmployeeCreate, Em
     );
     return response.data;
   }
+
+  /**
+   * Associate files with an employee
+   * @param employeeId Employee ID
+   * @param fileIds File IDs to associate
+   */
+  async addFiles(employeeId: number, fileIds: number[]): Promise<void> {
+    const files = fileIds.map((id) => ({ id }));
+    await this.httpClient.post(`${this.endpoint}/${employeeId}/Files`, files);
+  }
+
+  /**
+   * Remove a file association from an employee
+   * @param employeeId Employee ID
+   * @param fileId File ID to remove
+   */
+  async removeFile(employeeId: number, fileId: number): Promise<void> {
+    await this.httpClient.delete(`${this.endpoint}/${employeeId}/Files/${fileId}`);
+  }
 }

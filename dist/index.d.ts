@@ -214,6 +214,8 @@ interface Album {
     unapproved_image_count: string;
     updated: DateTime;
     user_id: number;
+    /** Remote field: user name */
+    user?: string;
     /** Expanded: groups */
     groups?: IdReferenceWithModify[];
     /** Expanded: projects */
@@ -222,6 +224,8 @@ interface Album {
     topics?: IdReference[];
     /** Expanded: users */
     users?: IdReferenceWithModify[];
+    /** Expanded: files */
+    files?: IdReference[];
 }
 interface AlbumCreate {
     name: string;
@@ -342,6 +346,8 @@ interface Employee {
     descriptor: string;
     last_name: string;
     updated: DateTime;
+    /** Hero image ID (when withHeroImage=1) */
+    hero_image_id?: number;
     /** Custom fields - dynamic based on configuration */
     [key: string]: unknown;
     /** Expanded: files */
@@ -476,6 +482,28 @@ interface File {
     deleted_user_id?: number;
     original_details_verified?: BooleanInt;
     similarity_attempts?: number;
+    /** Remote field: category name */
+    category?: string;
+    /** Remote field: copyright holder name */
+    copyright_holder?: string;
+    /** Remote field: photographer name */
+    photographer?: string;
+    /** Remote field: project code */
+    project_code?: string;
+    /** Remote field: project code alias 1 */
+    project_code_alias_1?: string;
+    /** Remote field: project code alias 2 */
+    project_code_alias_2?: string;
+    /** Remote field: project name */
+    project_name?: string;
+    /** Remote field: project name alias 1 */
+    project_name_alias_1?: string;
+    /** Remote field: project name alias 2 */
+    project_name_alias_2?: string;
+    /** Remote field: replaced user name */
+    replaced_user?: string;
+    /** Remote field: user name */
+    user?: string;
     /** Expanded: fields */
     fields?: FieldValue[];
     /** Expanded: keywords */
@@ -607,6 +635,8 @@ interface Project {
     deleted?: BooleanInt;
     /** Location (when withLocation=1) */
     location?: Location;
+    /** Hero image ID (when withHeroImage=1) */
+    hero_image_id?: number;
     /** Custom fields (when withEmbeddedFields=1) */
     [key: string]: unknown;
     /** Expanded: fields */
@@ -617,6 +647,8 @@ interface Project {
     albums?: IdReference[];
     /** Expanded: employees */
     employees?: ProjectEmployee[];
+    /** Expanded: files (nested noun) */
+    files?: IdReference[];
 }
 interface ProjectEmployee {
     id: number;
@@ -1049,6 +1081,10 @@ declare abstract class MergeableResource<T, TCreate = Partial<T>, TUpdate = Part
     merge(targetId: number, sourceIds: number[]): Promise<T>;
 }
 
+/**
+ * Albums resource
+ */
+
 interface AlbumListOptions extends ListOptions {
     /** Filter by user ID */
     user_id?: number;
@@ -1056,6 +1092,8 @@ interface AlbumListOptions extends ListOptions {
     company_album?: 0 | 1;
     /** Filter by shared album */
     shared_album?: 0 | 1;
+    /** Remote fields to include (e.g., 'user') */
+    remoteFields?: string | string[];
 }
 interface AlbumGetOptions extends GetOptions {
     /** Include groups expansion */
@@ -1066,6 +1104,10 @@ interface AlbumGetOptions extends GetOptions {
     topics?: 'all';
     /** Include users expansion */
     users?: 'all';
+    /** Include files expansion */
+    files?: 'all';
+    /** Remote fields to include (e.g., 'user') */
+    remoteFields?: string | string[];
 }
 /**
  * Albums resource for managing albums
@@ -1097,6 +1139,18 @@ declare class AlbumsResource extends MergeableResource<Album, AlbumCreate, Album
      * @param options Query options
      */
     getFiles(albumId: number, options?: ListOptions): Promise<IdReference[]>;
+    /**
+     * Remove a file from an album
+     * @param albumId Album ID
+     * @param fileId File ID to remove
+     */
+    removeFile(albumId: number, fileId: number): Promise<void>;
+    /**
+     * Remove multiple files from an album
+     * @param albumId Album ID
+     * @param fileIds File IDs to remove
+     */
+    removeFiles(albumId: number, fileIds: number[]): Promise<void>;
 }
 
 /**
@@ -1297,6 +1351,18 @@ declare class EmployeesResource extends BaseResource<Employee, EmployeeCreate, E
      * @param roles Grid data for roles
      */
     updateProjectRoles(employeeId: number, projectId: number, roles: GridData): Promise<EmployeeProject>;
+    /**
+     * Associate files with an employee
+     * @param employeeId Employee ID
+     * @param fileIds File IDs to associate
+     */
+    addFiles(employeeId: number, fileIds: number[]): Promise<void>;
+    /**
+     * Remove a file association from an employee
+     * @param employeeId Employee ID
+     * @param fileId File ID to remove
+     */
+    removeFile(employeeId: number, fileId: number): Promise<void>;
 }
 
 interface FieldListOptions extends ListOptions {
@@ -1682,6 +1748,8 @@ interface ProjectListOptions extends ListOptions {
     withEmbeddedKeywords?: 0 | 1;
     /** Include location in response */
     withLocation?: 0 | 1;
+    /** Include hero image ID in response */
+    withHeroImage?: 0 | 1;
 }
 interface ProjectGetOptions extends GetOptions {
     /** Include fields expansion */
@@ -1692,12 +1760,16 @@ interface ProjectGetOptions extends GetOptions {
     albums?: 'all';
     /** Include employees expansion */
     employees?: 'all';
+    /** Include files expansion (nested noun) */
+    files?: 'all';
     /** Include embedded fields in response */
     withEmbeddedFields?: 0 | 1;
     /** Include embedded keywords in response */
     withEmbeddedKeywords?: 0 | 1;
     /** Include location in response */
     withLocation?: 0 | 1;
+    /** Include hero image ID in response */
+    withHeroImage?: 0 | 1;
 }
 /**
  * Projects resource for managing projects

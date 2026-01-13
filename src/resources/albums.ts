@@ -2,8 +2,8 @@
  * Albums resource
  */
 
-import type { HttpClient } from '../utils/http-client';
-import type { Album, AlbumCreate, AlbumUpdate, IdReference } from '../types';
+import type { HttpClient, RequestOptions } from '../utils/http-client';
+import type { Album, AlbumCreate, AlbumUpdate, IdReference, PaginatedResponse } from '../types';
 import { MergeableResource, type ListOptions, type GetOptions } from './base';
 
 export interface AlbumListOptions extends ListOptions {
@@ -13,6 +13,8 @@ export interface AlbumListOptions extends ListOptions {
   company_album?: 0 | 1;
   /** Filter by shared album */
   shared_album?: 0 | 1;
+  /** Remote fields to include (e.g., 'user') */
+  remoteFields?: string | string[];
 }
 
 export interface AlbumGetOptions extends GetOptions {
@@ -24,6 +26,10 @@ export interface AlbumGetOptions extends GetOptions {
   topics?: 'all';
   /** Include users expansion */
   users?: 'all';
+  /** Include files expansion */
+  files?: 'all';
+  /** Remote fields to include (e.g., 'user') */
+  remoteFields?: string | string[];
 }
 
 /**
@@ -46,8 +52,18 @@ export class AlbumsResource extends MergeableResource<Album, AlbumCreate, AlbumU
   /**
    * List albums with pagination
    */
-  async list(options?: AlbumListOptions) {
-    return super.list(options);
+  async list(options?: AlbumListOptions): Promise<PaginatedResponse<Album>> {
+    const requestOptions: RequestOptions = {};
+
+    if (options) {
+      const { remoteFields, ...params } = options;
+      requestOptions.params = params;
+      if (remoteFields) {
+        requestOptions.remoteFields = remoteFields;
+      }
+    }
+
+    return this.httpClient.getPaginated<Album>(this.endpoint, requestOptions);
   }
 
   /**
@@ -77,5 +93,25 @@ export class AlbumsResource extends MergeableResource<Album, AlbumCreate, AlbumU
       this.toRequestOptions(options)
     );
     return response.data;
+  }
+
+  /**
+   * Remove a file from an album
+   * @param albumId Album ID
+   * @param fileId File ID to remove
+   */
+  async removeFile(albumId: number, fileId: number): Promise<void> {
+    await this.httpClient.delete(`${this.endpoint}/${albumId}/Files/${fileId}`);
+  }
+
+  /**
+   * Remove multiple files from an album
+   * @param albumId Album ID
+   * @param fileIds File IDs to remove
+   */
+  async removeFiles(albumId: number, fileIds: number[]): Promise<void> {
+    await this.httpClient.delete(`${this.endpoint}/${albumId}/Files`, {
+      params: { id: fileIds.join(',') },
+    });
   }
 }

@@ -467,7 +467,15 @@ var AlbumsResource = class extends MergeableResource {
    * List albums with pagination
    */
   async list(options) {
-    return super.list(options);
+    const requestOptions = {};
+    if (options) {
+      const { remoteFields, ...params } = options;
+      requestOptions.params = params;
+      if (remoteFields) {
+        requestOptions.remoteFields = remoteFields;
+      }
+    }
+    return this.httpClient.getPaginated(this.endpoint, requestOptions);
   }
   /**
    * Get a single album by ID
@@ -494,6 +502,24 @@ var AlbumsResource = class extends MergeableResource {
       this.toRequestOptions(options)
     );
     return response.data;
+  }
+  /**
+   * Remove a file from an album
+   * @param albumId Album ID
+   * @param fileId File ID to remove
+   */
+  async removeFile(albumId, fileId) {
+    await this.httpClient.delete(`${this.endpoint}/${albumId}/Files/${fileId}`);
+  }
+  /**
+   * Remove multiple files from an album
+   * @param albumId Album ID
+   * @param fileIds File IDs to remove
+   */
+  async removeFiles(albumId, fileIds) {
+    await this.httpClient.delete(`${this.endpoint}/${albumId}/Files`, {
+      params: { id: fileIds.join(",") }
+    });
   }
 };
 
@@ -719,6 +745,23 @@ var EmployeesResource = class extends BaseResource {
       { id: projectId, roles }
     );
     return response.data;
+  }
+  /**
+   * Associate files with an employee
+   * @param employeeId Employee ID
+   * @param fileIds File IDs to associate
+   */
+  async addFiles(employeeId, fileIds) {
+    const files = fileIds.map((id) => ({ id }));
+    await this.httpClient.post(`${this.endpoint}/${employeeId}/Files`, files);
+  }
+  /**
+   * Remove a file association from an employee
+   * @param employeeId Employee ID
+   * @param fileId File ID to remove
+   */
+  async removeFile(employeeId, fileId) {
+    await this.httpClient.delete(`${this.endpoint}/${employeeId}/Files/${fileId}`);
   }
 };
 

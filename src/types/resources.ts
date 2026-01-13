@@ -43,6 +43,8 @@ export interface Album {
   unapproved_image_count: string;
   updated: DateTime;
   user_id: number;
+  /** Remote field: user name */
+  user?: string;
   /** Expanded: groups */
   groups?: IdReferenceWithModify[];
   /** Expanded: projects */
@@ -51,6 +53,8 @@ export interface Album {
   topics?: IdReference[];
   /** Expanded: users */
   users?: IdReferenceWithModify[];
+  /** Expanded: files */
+  files?: IdReference[];
 }
 
 export interface AlbumCreate {
@@ -210,6 +214,8 @@ export interface Employee {
   descriptor: string;
   last_name: string;
   updated: DateTime;
+  /** Hero image ID (when withHeroImage=1) */
+  hero_image_id?: number;
   /** Custom fields - dynamic based on configuration */
   [key: string]: unknown;
   /** Expanded: files */
@@ -368,6 +374,28 @@ export interface File {
   deleted_user_id?: number;
   original_details_verified?: BooleanInt;
   similarity_attempts?: number;
+  /** Remote field: category name */
+  category?: string;
+  /** Remote field: copyright holder name */
+  copyright_holder?: string;
+  /** Remote field: photographer name */
+  photographer?: string;
+  /** Remote field: project code */
+  project_code?: string;
+  /** Remote field: project code alias 1 */
+  project_code_alias_1?: string;
+  /** Remote field: project code alias 2 */
+  project_code_alias_2?: string;
+  /** Remote field: project name */
+  project_name?: string;
+  /** Remote field: project name alias 1 */
+  project_name_alias_1?: string;
+  /** Remote field: project name alias 2 */
+  project_name_alias_2?: string;
+  /** Remote field: replaced user name */
+  replaced_user?: string;
+  /** Remote field: user name */
+  user?: string;
   /** Expanded: fields */
   fields?: FieldValue[];
   /** Expanded: keywords */
@@ -536,6 +564,8 @@ export interface Project {
   deleted?: BooleanInt;
   /** Location (when withLocation=1) */
   location?: Location;
+  /** Hero image ID (when withHeroImage=1) */
+  hero_image_id?: number;
   /** Custom fields (when withEmbeddedFields=1) */
   [key: string]: unknown;
   /** Expanded: fields */
@@ -546,6 +576,8 @@ export interface Project {
   albums?: IdReference[];
   /** Expanded: employees */
   employees?: ProjectEmployee[];
+  /** Expanded: files (nested noun) */
+  files?: IdReference[];
 }
 
 export interface ProjectEmployee {
