@@ -1,0 +1,1279 @@
+# OpenAsset JavaScript SDK (openassetjs)
+
+Complete API documentation for LLMs and developers.
+
+## Overview
+
+openassetjs is a TypeScript/JavaScript SDK for the OpenAsset REST API. OpenAsset is a Digital Asset Management (DAM) system designed for architecture, engineering, and construction (AEC) firms.
+
+## Installation
+
+```bash
+npm install openassetjs
+```
+
+## Quick Start
+
+```typescript
+import { OpenAssetClient, createClient } from 'openassetjs';
+
+const client = new OpenAssetClient({
+  domain: 'your-company', // or full URL: 'https://your-company.openasset.com'
+  tokenId: 'your-token-id',
+  tokenString: 'your-token-string',
+  timeout: 30000, // optional, default 30s
+});
+
+// Or use factory function
+const client = createClient({ domain, tokenId, tokenString });
+```
+
+## Authentication
+
+Uses Token Authentication via the `Authorization` header:
+```
+Authorization: OATU <token_id>:<token_string>
+```
+
+Create tokens at: `{domain}.openasset.com/Page/AuthenticationTokens`
+
+---
+
+## Core Concepts
+
+### Query Parameters (All Endpoints)
+
+```typescript
+interface QueryParams {
+  limit?: number;           // Results per page (default: 10, use 0 for all)
+  offset?: number;          // Skip N results for pagination
+  textMatching?: 'contains' | 'exact' | 'wildcard';  // Text search mode
+  orderBy?: string | string[];  // Sort field(s), append 'Desc' for descending
+  displayFields?: string | string[];  // Only return specific fields
+  filterBy?: FilterBy;      // Advanced AND/OR filtering (JSON)
+  gridLimit?: number;       // Limit for grid field rows
+  gridOffset?: number;      // Offset for grid field rows
+}
+```
+
+### Text Matching Modes
+
+- `contains` (default): Value appears anywhere in string
+- `exact`: Value must match completely
+- `wildcard`: Use `*` for fuzzy matching, `!` prefix for NOT, escape with `\`
+
+### Advanced Filtering (filterBy)
+
+```typescript
+// OR filtering (array = OR)
+const filterBy = [
+  { name: '*test*' },
+  { code: '*test*' }
+];
+
+// AND filtering (object keys = AND)
+const filterBy = {
+  name: '*building*',
+  code: 'ABC*'
+};
+
+// Complex AND/OR
+const filterBy = {
+  '-or': [
+    { name: '*test*' },
+    { code: '*demo*' }
+  ]
+};
+
+// Usage
+const projects = await client.projects.list({ filterBy });
+```
+
+### Numeric/Date Operators
+
+- `1-5`: Range (inclusive)
+- `<5`, `<=5`: Less than
+- `>5`, `>=5`: Greater than  
+- `!5`: Not equal
+
+### Pagination
+
+```typescript
+// Get paginated results
+const { data, fullResultsCount, offset } = await client.files.list({
+  limit: 100,
+  offset: 0
+});
+
+// Auto-paginate all results
+const allFiles = await client.files.getAll({ category_id: 1 });
+```
+
+### Response Headers
+
+```typescript
+interface ResponseHeaders {
+  'X-Full-Results-Count'?: string;    // Total matching results
+  'X-Display-Results-Count'?: string; // Results in this response
+  'X-Offset'?: string;                // Current offset
+  'X-Timing'?: string;                // Processing time
+  'X-Username'?: string;              // Authenticated user
+  'X-User-Id'?: string;               // Authenticated user ID
+  'X-OpenAsset-Version'?: string;     // API version
+}
+```
+
+---
+
+## Resources
+
+### Albums
+
+Albums are collections of files that can be shared with users and groups.
+
+```typescript
+// List albums
+const albums = await client.albums.list({
+  user_id: 5,
+  company_album: 1,
+  shared_album: 1,
+  remoteFields: 'user',  // Include owner's name
+  limit: 50
+});
+
+// Get album with expansions
+const album = await client.albums.get(123, {
+  groups: 'all',     // Groups with access
+  projects: 'all',   // Associated projects
+  topics: 'all',     // Associated topics
+  users: 'all',      // Users with access
+  files: 'all',      // Files in album
+  remoteFields: 'user'
+});
+
+// Create album
+const newAlbum = await client.albums.create({
+  name: 'My Album',
+  description: 'Album description',
+  company_album: 1,
+  share_with_all_users: 1
+});
+
+// Update album
+await client.albums.update(123, { name: 'New Name' });
+
+// Add files to album
+await client.albums.addFiles(123, [1, 2, 3]);
+
+// Get files in album
+const files = await client.albums.getFiles(123, { limit: 100 });
+
+// Remove file from album
+await client.albums.removeFile(123, 456);
+
+// Remove multiple files
+await client.albums.removeFiles(123, [456, 789]);
+
+// Merge albums (combine into one)
+await client.albums.merge(targetId, [sourceId1, sourceId2]);
+
+// Delete album
+await client.albums.delete(123);
+```
+
+**Album Properties:**
+- `id`, `name`, `description`, `code`
+- `user_id` - Owner
+- `company_album`, `approved_company_album` - Company-wide visibility
+- `shared_album`, `share_with_all_users` - Sharing status
+- `locked`, `all_users_can_modify` - Edit permissions
+- `private_image_count`, `public_image_count`, `unapproved_image_count`
+- `created`, `updated`
+
+---
+
+### Aspect Ratios (Read-Only)
+
+```typescript
+const ratios = await client.aspectRatios.list();
+// Returns: { id, code: 'landscape'|'portrait'|'square', label }
+```
+
+---
+
+### Categories
+
+Categories organize files (e.g., "Projects", "Reference", "Staff").
+
+```typescript
+// List categories
+const categories = await client.categories.list({ alive: 1 });
+
+// Get category
+const category = await client.categories.get(1);
+
+// Update category
+await client.categories.update(1, {
+  name: 'Project Images',
+  description: 'Images organized by project',
+  default_rank: 5,
+  default_access_level: 2,
+  display_order: 1,
+  alive: 1
+});
+```
+
+**Category Properties:**
+- `id`, `name`, `code`, `description`
+- `alive` - Enabled/disabled
+- `projects_category` - Whether this category uses projects
+- `default_rank`, `maximum_rank` - File ranking defaults
+- `default_access_level` - 1=Public, 2=Private, 3=Restricted
+- `display_order`, `updated`
+
+---
+
+### Copyright Holders
+
+```typescript
+// List
+const holders = await client.copyrightHolders.list();
+
+// Create
+const holder = await client.copyrightHolders.create({
+  name: 'Photographer Name',
+  copyright_policy_id: 1
+});
+
+// Update
+await client.copyrightHolders.update(1, { name: 'New Name' });
+
+// Merge
+await client.copyrightHolders.merge(targetId, [sourceId1, sourceId2]);
+```
+
+---
+
+### Copyright Policies
+
+```typescript
+// List
+const policies = await client.copyrightPolicies.list();
+
+// Create
+const policy = await client.copyrightPolicies.create({
+  name: 'Standard License',
+  description: 'Terms and conditions...'
+});
+
+// Update
+await client.copyrightPolicies.update(1, { name: 'Updated License' });
+
+// Delete
+await client.copyrightPolicies.delete(1);
+
+// Merge
+await client.copyrightPolicies.merge(targetId, [sourceId1, sourceId2]);
+```
+
+---
+
+### Data Integrations
+
+Connect OpenAsset with external systems (Vantagepoint, Cosential).
+
+```typescript
+// List integrations
+const integrations = await client.dataIntegrations.list();
+
+// Get with expansions
+const integration = await client.dataIntegrations.get(1, {
+  expand: {
+    fields: 'all',
+    keywordCategories: 'all',
+    projectKeywordCategories: 'all',
+    employeeKeywordCategories: 'all'
+  }
+});
+
+// Create
+const newIntegration = await client.dataIntegrations.create({
+  name: 'Vantagepoint Connection',
+  address: 'https://vantagepoint.example.com/api',
+  data_integration_type: 'vision',
+  display_order: 1
+});
+
+// Update
+await client.dataIntegrations.update(1, {
+  alive: 1,
+  name: 'Updated Name'
+});
+
+// Delete
+await client.dataIntegrations.delete(1);
+```
+
+---
+
+### Employees
+
+Employee records with custom fields and project associations.
+
+```typescript
+// List employees
+const employees = await client.employees.list({
+  alive: 1,
+  withHeroImage: 1,  // Include hero image ID
+  limit: 100
+});
+
+// Get employee with expansions
+const employee = await client.employees.get(1, {
+  files: 'all',      // Associated files
+  projects: 'all',   // Project associations with roles
+  persons: 'all',    // Linked persons
+  withHeroImage: 1
+});
+
+// Create employee
+const newEmployee = await client.employees.create({
+  first_name: 'John',
+  last_name: 'Doe',
+  code: 'JDOE001',
+  // Custom fields by rest_code
+  department: 'Engineering',
+  title: 'Senior Engineer'
+});
+
+// Update employee
+await client.employees.update(1, {
+  first_name: 'Jane',
+  title: 'Principal Engineer'
+});
+
+// Get files for employee
+const files = await client.employees.getFiles(1, { limit: 100 });
+
+// Update file display order
+await client.employees.updateFileDisplayOrder(1, [
+  { id: 10, display_order: 1 },
+  { id: 11, display_order: 2 }
+]);
+
+// Associate files with employee
+await client.employees.addFiles(1, [10, 11, 12]);
+
+// Remove file association
+await client.employees.removeFile(1, 10);
+
+// Get project associations
+const projects = await client.employees.getProjects(1);
+
+// Get/update project roles (grid field)
+const roles = await client.employees.getProjectRoles(1, 5);
+await client.employees.updateProjectRoles(1, 5, {
+  limit: 1,
+  offset: -1, // -1 = add new row
+  total: 0,
+  rows: [{
+    project_role: 'Lead Engineer',
+    start_date: '20230101000000',
+    end_date: '0',
+    role_description: 'Project lead responsibilities'
+  }]
+});
+
+// Delete employee
+await client.employees.delete(1);
+```
+
+**Employee Properties:**
+- `id`, `first_name`, `last_name`, `descriptor` (full name)
+- `code` - Unique identifier
+- `alive`, `created`, `updated`
+- `hero_image_id` - When withHeroImage=1
+- Custom fields appear as additional properties
+
+---
+
+### Fields
+
+Custom field definitions for Files, Projects, and Employees.
+
+```typescript
+// List fields
+const fields = await client.fields.list({
+  field_type: 'project',           // 'image' | 'project' | 'employee'
+  field_display_type: 'option',    // 'singleLine' | 'multiLine' | 'date' | 'boolean' | 'option' | 'suggestion' | 'fixedSuggestion' | 'grid'
+  alive: 1,
+  built_in: 0,
+  required: 1
+});
+
+// Get field with dropdown values
+const field = await client.fields.get(1, {
+  fieldLookupStrings: 'all'
+});
+
+// Create field
+const newField = await client.fields.create({
+  name: 'Project Status',
+  field_type: 'project',
+  field_display_type: 'option',
+  description: 'Current project status'
+});
+
+// Update field
+await client.fields.update(1, {
+  name: 'New Name',
+  description: 'Updated description',
+  display_order: 5,
+  alive: 1
+});
+
+// Get dropdown/suggestion values
+const lookupStrings = await client.fields.getFieldLookupStrings(1);
+// Returns: [{ id, value, display_order }]
+
+// Grid Columns (for grid fields)
+const columns = await client.fields.getGridColumns(61);
+
+// Create grid column
+const column = await client.fields.createGridColumn(61, {
+  name: 'Role',
+  field_display_type: 'singleLine'
+});
+
+// Update grid column
+await client.fields.updateGridColumn(61, 1, {
+  name: 'Updated Name',
+  display_order: 2
+});
+
+// Delete grid column
+await client.fields.deleteGridColumn(61, 1);
+
+// Delete field
+await client.fields.delete(1);
+```
+
+**Field Properties:**
+- `id`, `name`, `code`, `rest_code` - Identifiers
+- `field_type` - 'image' | 'project' | 'employee'
+- `field_display_type` - UI type
+- `built_in`, `protected` - System fields
+- `required`, `hero` - Validation/display
+- `include_on_search`, `include_on_info` - Visibility
+- `regex`, `regex_description` - Validation
+- `value_order_by` - 'displayOrder' | 'name' | 'nameDesc'
+- `cardinality`, `display_order`, `alive`
+
+---
+
+### Files
+
+Digital assets (images, videos, documents).
+
+```typescript
+// List files with filters
+const files = await client.files.list({
+  category_id: 1,
+  project_id: 5,
+  access_level: 2,
+  photographer_id: 10,
+  copyright_holder_id: 3,
+  user_id: 1,
+  rank: '>3',                    // Numeric operators
+  filename: 'exterior*',          // Wildcard matching
+  created: '>=20230101000000',    // Date filtering
+  uploaded: '20230101-20231231',  // Date range
+  textMatching: 'wildcard',
+  // Remote fields - include related data
+  remoteFields: ['photographer', 'copyright_holder', 'project_code', 'project_name', 'category', 'user'],
+  displayFields: ['id', 'filename', 'project_id', 'photographer'],  // Only these fields
+  orderBy: 'project_display_order',
+  limit: 100
+});
+
+// Get file with expansions
+const file = await client.files.get(123, {
+  fields: 'all',     // Custom field values
+  keywords: 'all',   // Applied keywords
+  albums: 'all',     // Albums containing file
+  sizes: 'all',      // Available image sizes
+  employees: 'all',  // Associated employees
+  remoteFields: ['photographer', 'project_name']
+});
+
+// Get file with specific sizes
+const fileWithSizes = await client.files.getWithSizes(123, [1, 2, 8]);
+// or
+const fileWithAllSizes = await client.files.getWithSizes(123, 'all');
+
+// Generate image URL
+const imageUrl = await client.files.getImageUrl(123, 8); // File ID, Size ID
+// Returns: 'https://data.openasset.com/...'
+
+// Create/Upload file (S3 direct upload)
+const upload = await client.files.initiateUpload({
+  category_id: 1,
+  original_filename: 'photo.jpg',
+  project_id: 5,                    // Required for project categories
+  original_filesize: 1024000,       // Required for S3 upload
+  part_size: 5242880,               // 5MB parts (optional)
+  partNumbers: [1, 2, 3]            // Get presigned URLs for these parts
+});
+// Returns: { id, aws_presigned_urls: [{ url, part_number }] }
+
+// Upload parts to S3, collect ETags, then complete:
+await client.files.completeUpload(upload.id, {
+  1: 'etag-from-s3-part-1',
+  2: 'etag-from-s3-part-2'
+});
+
+// Get additional presigned URLs
+const urls = await client.files.getPresignedUrls(123, [4, 5, 6]);
+
+// Update file metadata
+await client.files.update(123, {
+  access_level: 2,
+  caption: 'Building exterior',
+  description: 'Main entrance view',
+  photographer_id: 10,
+  copyright_holder_id: 3,
+  rank: 8
+});
+
+// Rotate file
+await client.files.rotate(123, 90); // 0, 90, 180, 270
+
+// Get/Update custom fields
+const fields = await client.files.getFields(123);
+await client.files.updateFields(123, [
+  { id: 1, values: ['New Value'] },
+  { id: 5, values: ['20230601000000'] }
+]);
+
+// Keywords
+const keywords = await client.files.getKeywords(123);
+await client.files.addKeywords(123, [10, 11, 12]);
+await client.files.removeKeyword(123, 10);
+
+// Albums
+const albums = await client.files.getAlbums(123);
+
+// Employees
+const employees = await client.files.getEmployees(123);
+await client.files.addEmployees(123, [1, 2]);
+await client.files.removeEmployee(123, 1);
+
+// Batch update display order
+await client.files.updateProjectDisplayOrder([
+  { id: 100, project_display_order: 1 },
+  { id: 101, project_display_order: 2 }
+]);
+
+// Delete file
+await client.files.delete(123);
+
+// Batch delete
+await client.files.deleteMany([123, 124, 125]);
+```
+
+**File Properties:**
+- `id`, `filename`, `original_filename`
+- `category_id`, `project_id`
+- `caption`, `description`
+- `access_level` - 1=Public, 2=Private, 3=Restricted
+- `rank` - Quality rating
+- `photographer_id`, `copyright_holder_id`, `user_id`
+- `click_count`, `download_count`
+- `contains_video`, `contains_audio`, `duration`
+- `is_vr` - Panoramic/VR image
+- `md5_at_upload`, `md5_now`
+- `rotate_degrees`, `rotation_since_upload`
+- `created`, `uploaded`, `updated`
+- `replaced`, `replaced_user_id`
+- `project_display_order` - Order within project
+- Remote fields when requested: `photographer`, `copyright_holder`, `project_code`, `project_name`, `category`, `user`, etc.
+
+**Size Info (when sizes expanded):**
+- `id`, `width`, `height`
+- `file_format`, `colourspace`
+- `quality`, `x_resolution`, `y_resolution`
+- `http_root`, `http_relative_path` - URL components
+- `filesize`, `cropped`, `watermarked`
+
+---
+
+### Groups
+
+User groups for permissions and sharing.
+
+```typescript
+// List groups
+const groups = await client.groups.list({ alive: 1 });
+
+// Get group with users
+const group = await client.groups.get(1, {
+  expand: { users: 'all' }
+});
+
+// Create group
+const newGroup = await client.groups.create({
+  name: 'Marketing Team',
+  default_for_new_users: 0,
+  expires: 0
+});
+
+// Update group
+await client.groups.update(1, {
+  name: 'Updated Name',
+  expires: 1,
+  expiry_date: '20251231235959'
+});
+
+// Delete group
+await client.groups.delete(1);
+```
+
+**Group Properties:**
+- `id`, `name`
+- `alive`, `hidden`
+- `default_for_new_users`
+- `expires`, `expiry_date`
+- `protected`
+
+---
+
+### Keywords
+
+File keywords organized by category.
+
+```typescript
+// List keywords
+const keywords = await client.keywords.list({
+  keyword_category_id: 5,
+  name: 'exterior',
+  textMatching: 'contains'
+});
+
+// Get keyword with files
+const keyword = await client.keywords.get(1, {
+  expand: { files: 'all' }
+});
+
+// Create keyword
+const newKeyword = await client.keywords.create({
+  name: 'Interior',
+  keyword_category_id: 1
+});
+
+// Create multiple
+const keywords = await client.keywords.createMany([
+  { name: 'Kitchen', keyword_category_id: 1 },
+  { name: 'Bathroom', keyword_category_id: 1 }
+]);
+
+// Update keyword
+await client.keywords.update(1, { name: 'Updated Name' });
+
+// Merge keywords (must be same category)
+await client.keywords.merge(targetId, [sourceId1, sourceId2]);
+
+// Delete keyword
+await client.keywords.delete(1);
+```
+
+**Keyword Properties:**
+- `id`, `name`, `keyword_category_id`
+- `updated`
+- `dead_image_count`, `private_image_count`, `public_image_count`, `unapproved_image_count`
+
+---
+
+### Keyword Categories
+
+Categories that group keywords.
+
+```typescript
+// List
+const categories = await client.keywordCategories.list({
+  category_id: 1  // Parent file category
+});
+
+// Create
+const category = await client.keywordCategories.create({
+  name: 'Building Type',
+  category_id: 1
+});
+
+// Update
+await client.keywordCategories.update(1, {
+  name: 'Updated Name',
+  display_order: 5
+});
+
+// Merge (must be same parent category)
+await client.keywordCategories.merge(targetId, [sourceId1]);
+
+// Delete
+await client.keywordCategories.delete(1);
+```
+
+---
+
+### Photographers
+
+```typescript
+// List
+const photographers = await client.photographers.list();
+
+// Create
+const photographer = await client.photographers.create({
+  name: 'John Smith Photography'
+});
+
+// Update
+await client.photographers.update(1, { name: 'New Name' });
+
+// Merge
+await client.photographers.merge(targetId, [sourceId1]);
+
+// Delete
+await client.photographers.delete(1);
+```
+
+---
+
+### Projects
+
+Projects organize files and have custom metadata.
+
+```typescript
+// List projects
+const projects = await client.projects.list({
+  alive: 1,
+  code: 'PRJ*',
+  name: '*building*',
+  latitude: '>40',
+  longitude: '<-73',
+  withEmbeddedFields: 1,    // Include custom fields inline
+  withEmbeddedKeywords: 1,  // Include keywords grouped by category
+  withLocation: 1,          // Include lat/long
+  withHeroImage: 1,         // Include hero image ID
+  textMatching: 'wildcard',
+  orderBy: 'nameDesc',
+  limit: 50
+});
+
+// Get project with expansions
+const project = await client.projects.get(18, {
+  fields: 'all',            // Custom field values
+  projectKeywords: 'all',   // Applied project keywords
+  albums: 'all',            // Associated albums
+  employees: 'all',         // Associated employees with roles
+  files: 'all',             // Files in project (nested noun)
+  withEmbeddedFields: 1,
+  withLocation: 1,
+  withHeroImage: 1
+});
+
+// Create project
+const newProject = await client.projects.create({
+  name: 'New Building Project',
+  code: 'NBP-2024-001',
+  code_alias_1: 'NBP001',
+  name_alias_1: 'New Building',
+  // Custom fields by rest_code:
+  client_name: 'ACME Corp',
+  project_status: 'In Progress'
+});
+
+// Update project
+await client.projects.update(18, {
+  name: 'Updated Name',
+  alive: 1,
+  code_alias_2: 'ALIAS2'
+});
+
+// Update location
+await client.projects.updateLocation(18, {
+  latitude: 40.7128,
+  longitude: -74.0060
+});
+
+// Get/Update custom fields
+const fields = await client.projects.getFields(18);
+await client.projects.updateFields(18, [
+  { id: 1, values: ['New Client Name'] },
+  { id: 3, values: ['20230601000000'] }
+]);
+
+// Project keywords
+const keywords = await client.projects.getProjectKeywords(18);
+await client.projects.addProjectKeywords(18, [10, 11]);
+await client.projects.removeProjectKeyword(18, 10);
+
+// Albums
+const albums = await client.projects.getAlbums(18);
+
+// Files
+const files = await client.projects.getFiles(18, { limit: 100 });
+
+// Employees
+const employees = await client.projects.getEmployees(18);
+
+// Employee roles
+const roles = await client.projects.getEmployeeRoles(18, 5);
+await client.projects.updateEmployeeRoles(18, 5, {
+  limit: 1,
+  offset: 0,
+  total: 1,
+  rows: [{
+    project_role: 'Project Manager',
+    start_date: '20230101000000',
+    end_date: '0',
+    role_description: 'Managing all project activities'
+  }]
+});
+
+// Delete project
+await client.projects.delete(18);
+```
+
+**Project Properties:**
+- `id`, `name`, `code`
+- `name_alias_1`, `name_alias_2`, `code_alias_1`, `code_alias_2`
+- `alive`, `deleted`
+- `created`, `updated`
+- `dead_image_count`, `private_image_count`, `public_image_count`, `unapproved_image_count`
+- `location` - { latitude, longitude } when withLocation=1
+- `hero_image_id` - When withHeroImage=1
+- Custom fields appear as additional properties when withEmbeddedFields=1
+
+---
+
+### Project Keywords
+
+Keywords specifically for projects.
+
+```typescript
+// List
+const keywords = await client.projectKeywords.list({
+  project_keyword_category_id: 2
+});
+
+// Create
+const keyword = await client.projectKeywords.create({
+  name: 'Commercial',
+  project_keyword_category_id: 2
+});
+
+// Create multiple
+const keywords = await client.projectKeywords.createMany([
+  { name: 'Healthcare', project_keyword_category_id: 2 },
+  { name: 'Education', project_keyword_category_id: 2 }
+]);
+
+// Update
+await client.projectKeywords.update(1, { name: 'Updated Name' });
+
+// Merge (must be same category)
+await client.projectKeywords.merge(targetId, [sourceId1]);
+
+// Delete
+await client.projectKeywords.delete(1);
+```
+
+---
+
+### Project Keyword Categories
+
+```typescript
+// List
+const categories = await client.projectKeywordCategories.list();
+
+// Create
+const category = await client.projectKeywordCategories.create({
+  name: 'Building Type'
+});
+
+// Update
+await client.projectKeywordCategories.update(1, {
+  name: 'Sector',
+  display_order: 1
+});
+
+// Merge
+await client.projectKeywordCategories.merge(targetId, [sourceId1]);
+
+// Delete
+await client.projectKeywordCategories.delete(1);
+```
+
+---
+
+### Searches (Saved Searches)
+
+```typescript
+// List saved searches
+const searches = await client.searches.list({
+  saved: 1,
+  user_id: 5,
+  company_saved_search: 1
+});
+
+// Get search with access info
+const search = await client.searches.get(1, {
+  groups: 'all',
+  users: 'all'
+});
+
+// Create search
+const newSearch = await client.searches.create({
+  name: 'Recent Exteriors',
+  search_items: [
+    { code: 'category', ids: ['1'], exclude: 0 },
+    { code: 'keyword.5', ids: ['10', '11'], exclude: 0, operator: 'OR' },
+    { code: 'uploaded', values: ['>20230101000000'], exclude: 0 },
+    { code: 'rank', values: ['>3'], exclude: 0 }
+  ],
+  saved: 1,
+  share_with_all_users: 1
+});
+
+// Update search
+await client.searches.update(1, {
+  name: 'Updated Name',
+  locked: 1
+});
+
+// Execute search (get matching files)
+const results = await client.searches.execute(1, {
+  limit: 100,
+  offset: 0
+});
+
+// Share with groups
+await client.searches.shareWithGroups(1, [
+  { id: 5, can_modify: 0 },
+  { id: 6, can_modify: 1 }
+]);
+
+// Share with users
+await client.searches.shareWithUsers(1, [
+  { id: 10, can_modify: 1 }
+]);
+
+// Get access lists
+const groups = await client.searches.getGroups(1);
+const users = await client.searches.getUsers(1);
+
+// Delete search
+await client.searches.delete(1);
+```
+
+**Search Item Codes:**
+- `album`, `project`, `category` - By ID
+- `photographer`, `copyrightHolder`, `user` - By ID or string
+- `created`, `uploaded` - Date with operators
+- `caption`, `description`, `filename`, `originalFilename` - Text search
+- `rank`, `size`, `width`, `keywordCount` - Numeric with operators
+- `accessLevel`, `aspectRatio`, `colourspace`, `fileFormat` - By ID
+- `popularFields` - Searches filename, caption, description, keywords
+- `deleted` - Boolean
+- `keyword.{category_id}` - Keywords by category
+- `projectKeyword.{category_id}` - Project keywords by category
+- `field.{field_id}` - Custom field values
+
+---
+
+### Sizes
+
+Image size definitions (generated versions).
+
+```typescript
+// List sizes
+const sizes = await client.sizes.list({ alive: 1 });
+
+// Get size
+const size = await client.sizes.get(8);
+
+// Create size
+const newSize = await client.sizes.create({
+  postfix: 'thumb',
+  file_format: 'jpg',
+  colourspace: 'RGB',
+  width: 150,
+  height: 150,
+  always_create: 1,
+  quality: 85,
+  x_resolution: 72,
+  y_resolution: 72
+});
+
+// Update size
+await client.sizes.update(8, {
+  name: 'Thumbnail',
+  description: 'Small preview image',
+  use_for_contact_sheet: 1,
+  use_for_power_point: 0,
+  use_for_zip: 1
+});
+
+// Delete size
+await client.sizes.delete(100);
+```
+
+**Size Properties:**
+- `id`, `name`, `postfix`, `description`
+- `width`, `height`, `quality`
+- `file_format` - 'jpg' | 'png' | 'tiff' | 'gif' | 'webp'
+- `colourspace` - 'RGB' | 'CMYK' | 'Grayscale'
+- `x_resolution`, `y_resolution`
+- `alive`, `protected`, `original`
+- `always_create`, `crop_to_fit`
+- `use_for_contact_sheet`, `use_for_power_point`, `use_for_zip`
+- `is_video` - Video size definition
+
+---
+
+### Text Rewrites (Read-Only)
+
+```typescript
+const rewrites = await client.textRewrites.list();
+// Returns: { id, text_match, text_replace, case_sensitive, preserve_first_letter_case }
+```
+
+---
+
+### Topics
+
+Topics categorize albums.
+
+```typescript
+// List
+const topics = await client.topics.list();
+
+// Get with albums
+const topic = await client.topics.get(5, {
+  expand: { albums: 'all' }
+});
+
+// Create
+const topic = await client.topics.create({
+  name: 'Featured Projects',
+  display_order: 1
+});
+
+// Update
+await client.topics.update(5, {
+  name: 'Updated Name',
+  display_order: 2
+});
+
+// Merge
+await client.topics.merge(targetId, [sourceId1]);
+
+// Delete
+await client.topics.delete(5);
+```
+
+---
+
+### Users
+
+```typescript
+// List users
+const users = await client.users.list({
+  alive: 1,
+  valid: 1
+});
+
+// Get user with groups
+const user = await client.users.get(5, {
+  expand: { groups: 'all' }
+});
+
+// Create user
+const newUser = await client.users.create({
+  full_name: 'John Doe',
+  username: 'jdoe',
+  password: 'secure_password',
+  email: 'jdoe@example.com',
+  expires: 0
+});
+
+// Update user
+await client.users.update(5, {
+  full_name: 'Jane Doe',
+  email: 'jane@example.com',
+  expires: 1,
+  expiry_date: '20251231235959'
+});
+
+// Delete user
+await client.users.delete(5);
+```
+
+**User Properties:**
+- `id`, `username`, `full_name`, `email`
+- `alive`, `valid`, `hidden`, `protected`
+- `invited` - Created via invitation
+- `expires`, `expiry_date`
+- `current_album_id` - Currently selected album
+- `sso_provider_id` - SSO integration
+
+---
+
+## Advanced HTTP Client Access
+
+For operations not covered by resource methods:
+
+```typescript
+const httpClient = client.getHttpClient();
+
+// Raw GET request
+const response = await httpClient.get<MyType>('/SomeEndpoint', {
+  params: { limit: 100 },
+  expand: { nested: 'all' },
+  remoteFields: ['field1', 'field2']
+});
+
+// Raw POST request
+const response = await httpClient.post<MyType>('/SomeEndpoint', {
+  field: 'value'
+});
+
+// HEAD request (get count without data)
+const { headers } = await httpClient.head('/Files');
+const count = parseInt(headers['X-Full-Results-Count'] || '0');
+```
+
+---
+
+## Error Handling
+
+```typescript
+import { OpenAssetError, BadRequestError, UnauthorizedError, ForbiddenError, NotFoundError } from 'openassetjs';
+
+try {
+  const file = await client.files.get(99999);
+} catch (error) {
+  if (error instanceof NotFoundError) {
+    console.log('File not found');
+  } else if (error instanceof UnauthorizedError) {
+    console.log('Invalid credentials');
+  } else if (error instanceof ForbiddenError) {
+    console.log('Access denied');
+  } else if (error instanceof BadRequestError) {
+    console.log('Invalid request:', error.message);
+  } else if (error instanceof OpenAssetError) {
+    console.log('API error:', error.message, error.statusCode);
+  }
+}
+```
+
+**Error Types:**
+- `OpenAssetError` - Base error class
+- `BadRequestError` (400) - Invalid request/parameters
+- `UnauthorizedError` (401) - Invalid authentication
+- `ForbiddenError` (403) - Access denied
+- `NotFoundError` (404) - Resource not found
+- `MethodNotAllowedError` (405) - HTTP method not allowed
+- `ConflictError` (409) - Resource conflict (duplicate)
+- `UnprocessableEntityError` (422) - Valid request but cannot process
+
+---
+
+## Type Exports
+
+All types are exported from the package:
+
+```typescript
+import type {
+  // Client types
+  OpenAssetClientConfig,
+  HttpClientConfig,
+  AuthConfig,
+  
+  // Common types
+  DateTime,
+  BooleanInt,
+  HttpMethod,
+  TextMatching,
+  SearchOperator,
+  FieldDisplayType,
+  FieldType,
+  QueryParams,
+  FilterBy,
+  PaginatedResponse,
+  ResponseHeaders,
+  
+  // Resource types
+  Album, AlbumCreate, AlbumUpdate,
+  AspectRatio,
+  Category, CategoryUpdate,
+  CopyrightHolder, CopyrightHolderCreate, CopyrightHolderUpdate,
+  CopyrightPolicy, CopyrightPolicyCreate, CopyrightPolicyUpdate,
+  DataIntegration, DataIntegrationCreate, DataIntegrationUpdate,
+  Employee, EmployeeCreate, EmployeeUpdate,
+  Field, FieldCreate, FieldUpdate, FieldLookupString,
+  File, FileCreate, FileUpdate, FileCreateResponse,
+  GridColumn, GridColumnCreate, GridColumnUpdate,
+  GridData, GridRow,
+  Group, GroupCreate, GroupUpdate,
+  Keyword, KeywordCreate, KeywordUpdate,
+  KeywordCategory, KeywordCategoryCreate, KeywordCategoryUpdate,
+  Photographer, PhotographerCreate, PhotographerUpdate,
+  Project, ProjectCreate, ProjectUpdate, ProjectEmployee,
+  ProjectKeyword, ProjectKeywordCreate, ProjectKeywordUpdate,
+  ProjectKeywordCategory, ProjectKeywordCategoryCreate, ProjectKeywordCategoryUpdate,
+  Search, SearchCreate, SearchUpdate, SearchItem, SearchItemCode,
+  Size, SizeCreate, SizeUpdate, SizeInfo,
+  TextRewrite,
+  Topic, TopicCreate, TopicUpdate,
+  User, UserCreate, UserUpdate,
+  
+  // Utility types
+  IdReference,
+  IdReferenceWithModify,
+  Location,
+  FieldValue,
+  BatchResponseItem,
+} from 'openassetjs';
+```
+
+---
+
+## Best Practices
+
+### Batching
+- GET requests: Use `limit` up to 500 for Files, higher for other resources
+- POST/PUT/DELETE: Batch up to 100-200 items per request
+- File uploads: Max 3GB per batch
+
+### Performance
+- Use `displayFields` to reduce payload size
+- Use `remoteFields` instead of separate API calls
+- Use noun expansions (`files=all`) instead of nested requests
+- Implement pagination for large datasets
+
+### Rate Limiting
+- Implement exponential backoff for retries
+- Monitor `X-Timing` header for slow requests
+- Use batch operations instead of individual requests
+
+---
+
+## Version History
+
+- **1.0.0** - Initial release
+  - Full CRUD support for all 20 resources
+  - Noun expansions and remote fields
+  - Advanced filtering (filterBy, textMatching)
+  - S3 direct file uploads
+  - Grid field support
+  - TypeScript types for all resources

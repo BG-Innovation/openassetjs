@@ -32,6 +32,8 @@ export interface ProjectListOptions extends ListOptions {
   withEmbeddedKeywords?: 0 | 1;
   /** Include location in response */
   withLocation?: 0 | 1;
+  /** Include hero image ID in response */
+  withHeroImage?: 0 | 1;
 }
 
 export interface ProjectGetOptions extends GetOptions {
@@ -43,12 +45,16 @@ export interface ProjectGetOptions extends GetOptions {
   albums?: 'all';
   /** Include employees expansion */
   employees?: 'all';
+  /** Include files expansion (nested noun) */
+  files?: 'all';
   /** Include embedded fields in response */
   withEmbeddedFields?: 0 | 1;
   /** Include embedded keywords in response */
   withEmbeddedKeywords?: 0 | 1;
   /** Include location in response */
   withLocation?: 0 | 1;
+  /** Include hero image ID in response */
+  withHeroImage?: 0 | 1;
 }
 
 /**
