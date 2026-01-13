@@ -17,28 +17,28 @@ A modern, fully-typed TypeScript SDK for the [OpenAsset REST API](https://develo
 
 ```bash
 # npm
-npm install git+https://github.com/BG-Innovation/realtime_api_demo.git#openasset-sdk
+npm install git+https://github.com/BG-Innovation/realtime_api_demo.git#openassetjs
 
 # pnpm
-pnpm add git+https://github.com/BG-Innovation/realtime_api_demo.git#openasset-sdk
+pnpm add git+https://github.com/BG-Innovation/realtime_api_demo.git#openassetjs
 
 # bun
-bun add git+https://github.com/BG-Innovation/realtime_api_demo.git#openasset-sdk
+bun add git+https://github.com/BG-Innovation/realtime_api_demo.git#openassetjs
 
 # yarn
-yarn add git+https://github.com/BG-Innovation/realtime_api_demo.git#openasset-sdk
+yarn add git+https://github.com/BG-Innovation/realtime_api_demo.git#openassetjs
 ```
 
 You can also install from a specific directory:
 
 ```bash
-npm install github:BG-Innovation/realtime_api_demo#main:openasset-sdk
+npm install github:BG-Innovation/realtime_api_demo#main:openassetjs
 ```
 
 ## Quick Start
 
 ```typescript
-import { OpenAssetClient } from 'openasset-sdk';
+import { OpenAssetClient } from 'openassetjs';
 
 // Create a client instance
 const client = new OpenAssetClient({
@@ -336,7 +336,7 @@ import {
   AuthenticationError,
   NotFoundError,
   ForbiddenError,
-} from 'openasset-sdk';
+} from 'openassetjs';
 
 try {
   const project = await client.projects.get(999999);
@@ -365,7 +365,7 @@ import type {
   Keyword,
   Employee,
   // ... and many more
-} from 'openasset-sdk';
+} from 'openassetjs';
 ```
 
 ## Best Practices

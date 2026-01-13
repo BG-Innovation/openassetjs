@@ -2078,7 +2078,7 @@ interface OpenAssetClientConfig {
  *
  * @example
  * ```typescript
- * import { OpenAssetClient } from 'openasset-sdk';
+ * import { OpenAssetClient } from 'openassetjs';
  *
  * const client = new OpenAssetClient({
  *   domain: 'your-company',
@@ -2151,7 +2151,7 @@ declare class OpenAssetClient {
  *
  * @example
  * ```typescript
- * import { createClient } from 'openasset-sdk';
+ * import { createClient } from 'openassetjs';
  *
  * const client = createClient({
  *   domain: 'your-company',

@@ -1,5 +1,5 @@
 {
-  "name": "openasset-sdk",
+  "name": "openassetjs",
   "version": "1.0.0",
   "description": "Modern TypeScript SDK for the OpenAsset REST API",
   "main": "dist/index.js",
